@@ -1,5 +1,5 @@
 {
-  "etherscan_api_key": "1BKWWWJSXUF9PJVG49SH7VP3PEPNFY41N6",  # Ganti dengan API Key Etherscan
+  "etherscan_api_key": "1BKWWWJSXUF9PJVG49SH7VP3PEPNFY41N6",
   "check_criteria": {
     "min_holders": 100,
     "min_holder_ratio": 0.01,
