@@ -1,6 +1,15 @@
 {
-    "blacklisted_tokens": ["MEMECOIN1", "MEMECOIN2"],
-    "blacklisted_developers": ["DEV1", "DEV2"],
-    "rugcheck_url": "http://rugcheck.xyz/api/validate",
-    "tweetscout_url": "http://app.tweetscout.io/api/score"
+    "developer_blacklist": [],
+    "memecoin_blacklist": [],
+    "pumpfun_url": "https://pump.fun/advanced",
+    "dexscreener_url": "https://api.dexscreener.com/latest/dex/tokens",
+    "gmgn_url": "https://gmgn.ai",
+    "rocker_universe_url": "https://api.rockeruniverse.com/check",
+    "rugcheck_url": "http://rugcheck.xyz",
+    "tweetscout_url": "http://app.tweetscout.io/api/twitter_score",
+    "filters": {
+        "max_pair_age_hours": 24,
+        "min_1h_transactions": 150,
+        "min_5m_transactions": 25
+    }
 }
