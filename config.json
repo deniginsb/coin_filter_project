@@ -1,26 +1,11 @@
 {
-    "pump_fun_data": [
-        {
-            "name": "Coin1",
-            "contract_address": "0x1234567890abcdef"
+    "pair": {
+        "baseToken": {
+            "symbol": "ETH",
+            "address": "0x5c69b8a6b13e26b6c6a207f4a6d114f8d4c2c6c3"
         },
-        {
-            "name": "Coin2",
-            "contract_address": "0xabcdef1234567890"
-        }
-    ],
-    "dex_screener_data": [
-        {
-            "token_name": "Token1",
-            "pair": "ETH/USDT"
-        },
-        {
-            "token_name": "Token2",
-            "pair": "BTC/USDT"
-        }
-    ],
-    "rug_check_status": "Good",
-    "tweet_scout_score": "Good",
-    "contract_address": "0x1234567890abcdef",
-    "is_blacklisted": false
+        "priceUsd": "1567.98",
+        "volumeUsd24h": "12345678",
+        "priceChange24h": "2.34"
+    }
 }
