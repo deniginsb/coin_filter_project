@@ -1,62 +1,44 @@
+import subprocess
 import json
-from web3 import Web3
 
 # Membaca konfigurasi dari file config.json
 def load_config():
-    with open('config.json', 'r') as file:
+    with open("config.json", "r") as file:
         return json.load(file)
 
-# Inisialisasi koneksi ke Ethereum menggunakan Infura dari config.json
+# Fungsi untuk mengirim permintaan API menggunakan curl
+def send_api_request(url):
+    command = ["curl", "-X", "GET", url]
+    result = subprocess.run(command, capture_output=True, text=True)
+    return json.loads(result.stdout)
+
+# Fungsi untuk mendapatkan informasi kontrak token dari Etherscan
+def get_contract_info(address, api_key):
+    url = f"https://api.etherscan.io/api?module=contract&action=getabi&address={address}&apikey={api_key}"
+    
+    response = send_api_request(url)
+    
+    if response['status'] == '1':  # Status '1' berarti request berhasil
+        return response['result']
+    else:
+        return f"Error: {response['message']}"
+
+# Fungsi untuk memeriksa jika kontrak dapat berpotensi rugpull
+def check_risk_of_rugpull(address, api_key):
+    abi = get_contract_info(address, api_key)
+    
+    if "burn" in abi or "transfer" in abi:
+        return "Kontrak berpotensi rugpull jika ada fungsi yang memungkinkan pengembang menarik likuiditas atau mengendalikan token."
+    else:
+        return "Kontrak tidak ditemukan indikasi risiko rugpull."
+
+# Mengambil data dari config.json
 config = load_config()
-infura_url = f"https://mainnet.infura.io/v3/{config['infura_project_id']}"
-web3 = Web3(Web3.HTTPProvider(infura_url))
 
-# Memeriksa apakah alamat kontrak valid
-def is_valid_contract(address):
-    return web3.isAddress(address)
+# Meminta input alamat kontrak dari pengguna
+contract_address = input("Masukkan alamat kontrak token: ")
+etherscan_api_key = config["etherscan_api_key"]
 
-# Memeriksa pemilik kontrak
-def check_token_owner(contract_address):
-    # ABI minimal untuk memeriksa pemilik kontrak
-    abi = [
-        {
-            "constant": True,
-            "inputs": [],
-            "name": "owner",
-            "outputs": [{"name": "", "type": "address"}],
-            "payable": False,
-            "stateMutability": "view",
-            "type": "function"
-        }
-    ]
-
-    # Cek apakah alamat kontrak valid
-    if not is_valid_contract(contract_address):
-        return "Alamat kontrak tidak valid."
-
-    # Membuat objek kontrak
-    contract = web3.eth.contract(address=contract_address, abi=abi)
-    
-    try:
-        # Memanggil fungsi owner untuk mendapatkan alamat pemilik kontrak
-        owner_address = contract.functions.owner().call()
-        print(f"Pemilik kontrak: {owner_address}")
-
-        # Cek apakah pemilik dapat melakukan rugpull (misalnya, jika owner adalah alamat kontrak kosong)
-        if owner_address == "0x0000000000000000000000000000000000000000":
-            return "Token aman dari rugpull: Pemilik kontrak adalah alamat nol."
-        else:
-            return "Peringatan: Token ini memiliki pemilik yang bisa mengubah kontrak atau likuiditas."
-    
-    except Exception as e:
-        return f"Error memeriksa kontrak: {e}"
-
-# Meminta input alamat kontrak token dari pengguna
-def get_contract_address():
-    contract_address = input("Masukkan alamat kontrak token: ")
-    return contract_address
-
-# Program utama
-contract_address = get_contract_address()
-result = check_token_owner(contract_address)
-print(result)
+# Memeriksa risiko rugpull
+risk_info = check_risk_of_rugpull(contract_address, etherscan_api_key)
+print(risk_info)
