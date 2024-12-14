@@ -1,39 +1,62 @@
-import requests
 import json
+from web3 import Web3
 
-def get_token_data(contract_address):
-    url = f'https://api.dexscreener.com/latest/dex/tokens/{contract_address}'
-    response = requests.get(url)
+# Membaca konfigurasi dari file config.json
+def load_config():
+    with open('config.json', 'r') as file:
+        return json.load(file)
 
-    if response.status_code == 200:
-        data = response.json()
-        
-        # Simpan data JSON ke file
-        with open("token_data.json", "w") as json_file:
-            json.dump(data, json_file, indent=4)
-        
-        if 'pair' in data:
-            token_data = data['pair']
-            token_name = token_data['baseToken']['symbol']
-            price = token_data['priceUsd']
-            volume = token_data['volumeUsd24h']
-            change_24h = token_data['priceChange24h']
+# Inisialisasi koneksi ke Ethereum menggunakan Infura dari config.json
+config = load_config()
+infura_url = f"https://mainnet.infura.io/v3/{config['infura_project_id']}"
+web3 = Web3(Web3.HTTPProvider(infura_url))
 
-            print(f"Token: {token_name}")
-            print(f"Price (USD): ${price}")
-            print(f"24h Volume (USD): ${volume}")
-            print(f"24h Change: {change_24h}%")
+# Memeriksa apakah alamat kontrak valid
+def is_valid_contract(address):
+    return web3.isAddress(address)
 
-            # Simple analysis: If price change is positive, it's a good sign
-            if change_24h > 0:
-                print("The token is showing positive momentum!")
-            else:
-                print("The token is showing negative momentum.")
+# Memeriksa pemilik kontrak
+def check_token_owner(contract_address):
+    # ABI minimal untuk memeriksa pemilik kontrak
+    abi = [
+        {
+            "constant": True,
+            "inputs": [],
+            "name": "owner",
+            "outputs": [{"name": "", "type": "address"}],
+            "payable": False,
+            "stateMutability": "view",
+            "type": "function"
+        }
+    ]
+
+    # Cek apakah alamat kontrak valid
+    if not is_valid_contract(contract_address):
+        return "Alamat kontrak tidak valid."
+
+    # Membuat objek kontrak
+    contract = web3.eth.contract(address=contract_address, abi=abi)
+    
+    try:
+        # Memanggil fungsi owner untuk mendapatkan alamat pemilik kontrak
+        owner_address = contract.functions.owner().call()
+        print(f"Pemilik kontrak: {owner_address}")
+
+        # Cek apakah pemilik dapat melakukan rugpull (misalnya, jika owner adalah alamat kontrak kosong)
+        if owner_address == "0x0000000000000000000000000000000000000000":
+            return "Token aman dari rugpull: Pemilik kontrak adalah alamat nol."
         else:
-            print("Data not found for the given contract address.")
-    else:
-        print(f"Error fetching data: {response.status_code}")
+            return "Peringatan: Token ini memiliki pemilik yang bisa mengubah kontrak atau likuiditas."
+    
+    except Exception as e:
+        return f"Error memeriksa kontrak: {e}"
 
-# Example usage
-contract_address = input("Enter the token contract address: ")
-get_token_data(contract_address)
+# Meminta input alamat kontrak token dari pengguna
+def get_contract_address():
+    contract_address = input("Masukkan alamat kontrak token: ")
+    return contract_address
+
+# Program utama
+contract_address = get_contract_address()
+result = check_token_owner(contract_address)
+print(result)
