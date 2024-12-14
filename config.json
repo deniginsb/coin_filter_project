@@ -1,6 +1,5 @@
 {
-  "bscscan_api_key": "NN577K51XCHEK7X16R2C68B9UCKMGSK78Z",
-  "default_rpc_url": "https://bsc-dataseed.binance.org/",
+  "etherscan_api_key": "1BKWWWJSXUF9PJVG49SH7VP3PEPNFY41N6",  # Ganti dengan API Key Etherscan
   "check_criteria": {
     "min_holders": 100,
     "min_holder_ratio": 0.01,
