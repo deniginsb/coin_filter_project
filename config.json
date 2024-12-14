@@ -1,0 +1,6 @@
+{
+    "blacklisted_tokens": ["MEMECOIN1", "MEMECOIN2"],
+    "blacklisted_developers": ["DEV1", "DEV2"],
+    "rugcheck_url": "http://rugcheck.xyz/api/validate",
+    "tweetscout_url": "http://app.tweetscout.io/api/score"
+}
