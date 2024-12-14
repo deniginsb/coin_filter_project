@@ -1,163 +1,153 @@
 import requests
-import pandas as pd
 import json
+import os
 
-class CoinFilter:
-    def __init__(self, config_file="config.json"):
-        self.pumpfun_url = "https://pump.fun/advanced"
-        self.dexscreener_url = "https://api.dexscreener.com/latest/dex/tokens"
-        self.rugcheck_url = ""
-        self.tweetscout_url = ""
-        self.config_file = config_file
-        self.config = self.load_config()
+# === Konfigurasi ===
+CONFIG_FILE = "settings.json"
 
-    def load_config(self):
-        """Memuat konfigurasi dari file."""
-        try:
-            with open(self.config_file, "r") as file:
-                config = json.load(file)
-                self.rugcheck_url = config.get("rugcheck_url", "")
-                self.tweetscout_url = config.get("tweetscout_url", "")
-                print("Konfigurasi berhasil dimuat.")
-                return config
-        except FileNotFoundError:
-            print("File konfigurasi tidak ditemukan.")
-            return {"blacklisted_tokens": [], "blacklisted_developers": []}
+# Memuat atau membuat file konfigurasi default
+def load_config():
+    if not os.path.exists(CONFIG_FILE):
+        default_config = {
+            "developer_blacklist": [],
+            "memecoin_blacklist": [],
+            "pumpfun_url": "https://pump.fun/advanced",
+            "dexscreener_url": "https://api.dexscreener.com/latest/dex/tokens",
+            "gmgn_url": "https://gmgn.ai",
+            "rocker_universe_url": "https://api.rockeruniverse.com/check",
+            "rugcheck_url": "http://rugcheck.xyz",
+            "tweetscout_url": "http://app.tweetscout.io/api/twitter_score",
+            "filters": {
+                "max_pair_age_hours": 24,
+                "min_1h_transactions": 150,
+                "min_5m_transactions": 25
+            }
+        }
+        with open(CONFIG_FILE, "w") as file:
+            json.dump(default_config, file, indent=4)
+        return default_config
+    else:
+        with open(CONFIG_FILE, "r") as file:
+            return json.load(file)
 
-    def save_config(self):
-        """Menyimpan konfigurasi ke file."""
-        with open(self.config_file, "w") as file:
-            json.dump(self.config, file, indent=4)
-            print("Konfigurasi berhasil disimpan.")
+# Simpan perubahan ke file konfigurasi
+def save_config(config):
+    with open(CONFIG_FILE, "w") as file:
+        json.dump(config, file, indent=4)
 
-    def fetch_pumpfun_data(self):
-        """Mengambil data dari PumpFun."""
-        response = requests.get(self.pumpfun_url)
-        if response.status_code == 200:
-            print("Data PumpFun berhasil diambil.")
-            return response.json()
+# Memuat konfigurasi
+config = load_config()
+
+# === Tweetscout: Pemeriksaan Skor Twitter ===
+def get_twitter_score(token_name):
+    """Periksa skor Twitter token melalui Tweetscout API."""
+    url = config["tweetscout_url"]
+    try:
+        # Misalnya, token_name digunakan untuk mencari tweet terkait token di Twitter
+        response = requests.get(f"{url}?token={token_name}")
+        response.raise_for_status()
+        result = response.json()
+        score = result.get("score", 0)
+        if score > 450:
+            print(f"Token {token_name} has a good Twitter score: {score}. Marked as 'Good'.")
+            return "Good"
         else:
-            print("Gagal mengambil data PumpFun.")
-            return None
+            print(f"Token {token_name} has a moderate Twitter score: {score}. Marked as 'Moderate'.")
+            return "Moderate"
+    except Exception as e:
+        print(f"Error fetching Twitter score for {token_name}: {e}")
+        return "Unknown"
 
-    def fetch_dexscreener_data(self):
-        """Mengambil data dari DexScreener."""
-        response = requests.get(self.dexscreener_url)
-        if response.status_code == 200:
-            print("Data DexScreener berhasil diambil.")
-            return response.json()
-        else:
-            print("Gagal mengambil data DexScreener.")
-            return None
+# === RugCheck: Verifikasi Token ===
+def is_token_safe(token_address):
+    """Periksa status token di RugCheck."""
+    url = config["rugcheck_url"]
+    try:
+        response = requests.get(f"{url}/api/check/{token_address}")
+        response.raise_for_status()
+        result = response.json()
+        return result.get("status") == "Good"  # Pastikan token memiliki status "Good"
+    except Exception as e:
+        print(f"Error checking RugCheck for token {token_address}: {e}")
+        return False
 
-    def validate_with_rugcheck(self, token_address):
-        """Validasi token menggunakan API RugCheck."""
-        if not self.rugcheck_url:
-            print("RugCheck URL tidak ditemukan dalam konfigurasi.")
-            return False
+# === Verifikasi Pasokan Tidak Dibundel ===
+def is_supply_bundled(token):
+    """
+    Verifikasi apakah pasokan koin dibundel berdasarkan pola distribusi
+    (contoh sederhana: periksa jika pemegang utama terlalu besar).
+    """
+    total_supply = token.get("total_supply", 0)
+    holders = token.get("holders", [])
+    if not total_supply or not holders:
+        return False
 
-        params = {"token_address": token_address}
-        response = requests.get(self.rugcheck_url, params=params)
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("status") == "Baik" and not data.get("is_bundled", True):
-                return True  # Token valid jika status "Baik" dan tidak dibundel
-            else:
-                print(f"Token {token_address} tidak valid: {data}")
-                return False
-        else:
-            print(f"Gagal memvalidasi token {token_address} dengan RugCheck.")
-            return False
+    # Ambil pemegang dengan alokasi terbesar
+    largest_holder = max(holders, key=lambda h: h["amount"], default={"amount": 0})
+    if largest_holder["amount"] / total_supply > 0.5:  # >50% dari total pasokan
+        print(f"Token {token['name']} is bundled: largest holder owns more than 50%.")
+        return True
+    return False
 
-    def fetch_twitter_score(self, token_symbol):
-        """Mengecek skor Twitter token menggunakan API TweetScout."""
-        if not self.tweetscout_url:
-            print("TweetScout URL tidak ditemukan dalam konfigurasi.")
-            return "Tidak Valid"
+# Tambahkan token dan pengembang ke daftar hitam
+def blacklist_token_and_developer(token):
+    if token["name"] not in config["memecoin_blacklist"]:
+        config["memecoin_blacklist"].append(token["name"])
+    if token["developer"] not in config["developer_blacklist"]:
+        config["developer_blacklist"].append(token["developer"])
+    save_config(config)
+    print(f"Token {token['name']} and developer {token['developer']} blacklisted.")
 
-        params = {"token_symbol": token_symbol}
-        response = requests.get(self.tweetscout_url, params=params)
-        if response.status_code == 200:
-            data = response.json()
-            score = data.get("score", 0)
-            if score >= 450:
-                return "Baik"
-            else:
-                return "Sedang"
-        else:
-            print(f"Gagal memvalidasi skor Twitter untuk {token_symbol}.")
-            return "Tidak Valid"
+# === DexScreener: Filter token baru ===
+def fetch_dexscreener_data():
+    url = config["dexscreener_url"]
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+        print(f"DexScreener: Fetched {len(data['tokens'])} tokens.")
+        return data['tokens']
+    except Exception as e:
+        print(f"Error fetching DexScreener data: {e}")
+        return []
 
-    def blacklist_token_and_developer(self, token_name, developer):
-        """Tambahkan token dan developer ke daftar hitam."""
-        if token_name not in self.config["blacklisted_tokens"]:
-            self.config["blacklisted_tokens"].append(token_name)
-            print(f"Token {token_name} ditambahkan ke daftar hitam.")
-        
-        if developer and developer not in self.config["blacklisted_developers"]:
-            self.config["blacklisted_developers"].append(developer)
-            print(f"Pengembang {developer} ditambahkan ke daftar hitam.")
-        
-        self.save_config()
+def filter_dexscreener_data(tokens):
+    filters = config["filters"]
+    filtered_tokens = []
+    for token in tokens:
+        if token.get("developer") in config["developer_blacklist"]:
+            print(f"Skipping token {token['name']} by blacklisted developer {token['developer']}.")
+            continue
+        if token.get("name") in config["memecoin_blacklist"]:
+            print(f"Skipping blacklisted memecoin {token['name']}.")
+            continue
+        if token.get("pair_age_hours", 0) > filters["max_pair_age_hours"] or \
+           token.get("transactions_1h", 0) < filters["min_1h_transactions"] or \
+           token.get("transactions_5m", 0) < filters["min_5m_transactions"]:
+            continue
+        if not is_token_safe(token["address"]):
+            print(f"Skipping token {token['name']} as it is marked unsafe by RugCheck.")
+            continue
+        if is_supply_bundled(token):
+            blacklist_token_and_developer(token)
+            continue
+        # Periksa skor Twitter untuk setiap token
+        twitter_score = get_twitter_score(token["name"])
+        token["twitter_score"] = twitter_score  # Menyimpan hasil skor Twitter
+        filtered_tokens.append(token)
+    print(f"DexScreener: Filtered to {len(filtered_tokens)} tokens after blacklist, criteria, and safety checks.")
+    return filtered_tokens
 
-    def filter_tokens(self, tokens):
-        """Memfilter token berdasarkan kriteria, validasi RugCheck, dan skor Twitter."""
-        filtered_tokens = []
-        blacklisted_tokens = self.config.get("blacklisted_tokens", [])
-        blacklisted_developers = self.config.get("blacklisted_developers", [])
-
-        for token in tokens:
-            token_name = token.get("symbol", "")
-            developer = token.get("developer", "")  # Asumsikan ada data developer di API
-            age = token.get("pairAge", 0)  # Usia pasangan dalam jam
-            transactions_1h = token.get("transactions", {}).get("1h", 0)
-            transactions_5m = token.get("transactions", {}).get("5m", 0)
-            token_address = token.get("address", "")
-
-            if (token_name in blacklisted_tokens or 
-                developer in blacklisted_developers or 
-                age > 24 or 
-                transactions_1h < 150 or 
-                transactions_5m < 25):
-                continue
-
-            # Validasi dengan RugCheck
-            if not self.validate_with_rugcheck(token_address):
-                self.blacklist_token_and_developer(token_name, developer)
-                continue
-
-            # Validasi skor Twitter
-            twitter_score = self.fetch_twitter_score(token_name)
-            if twitter_score != "Baik":
-                print(f"Token {token_name} gagal validasi Twitter dengan skor: {twitter_score}")
-                continue
-
-            filtered_tokens.append(token)
-        return filtered_tokens
-
-    def process(self):
-        """Proses utama untuk mengambil, memfilter, dan menganalisis data."""
-        pumpfun_data = self.fetch_pumpfun_data()
-        if pumpfun_data is None:
-            return
-
-        dexscreener_data = self.fetch_dexscreener_data()
-        if dexscreener_data is None:
-            return
-
-        tokens = dexscreener_data.get("pairs", [])
-        filtered_tokens = self.filter_tokens(tokens)
-
-        results = []
-        for token in filtered_tokens:
-            token_address = token.get("address", "")
-            results.append({"token": token})
-
-        # Simpan hasil ke file CSV
-        df = pd.DataFrame(results)
-        df.to_csv("filtered_tokens.csv", index=False)
-        print("Hasil berhasil disimpan di 'filtered_tokens.csv'.")
+# === Main Program ===
+def main():
+    print("Fetching data from DexScreener...")
+    dexscreener_data = fetch_dexscreener_data()
+    filtered_dexscreener = filter_dexscreener_data(dexscreener_data)
+    
+    print("Final filtered tokens:")
+    for token in filtered_dexscreener:
+        print(f"- {token['name']} ({token['address']}) | Twitter Score: {token.get('twitter_score', 'N/A')}")
 
 if __name__ == "__main__":
-    coin_filter = CoinFilter()
-    coin_filter.process()
+    main()
+        
