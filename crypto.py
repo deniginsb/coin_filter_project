@@ -19,7 +19,7 @@ max_supply_percentage = config['check_criteria']['max_supply_percentage']
 
 # Fungsi untuk mendapatkan data dari Etherscan API
 def check_token(address):
-    url = f"https://api.etherscan.io/api?module=token&action=getTokenInfo&contractaddress={address}&apikey={API_KEY}"
+    url = f"https://api.etherscan.io/api?module=token&action=tokeninfo&contractaddress={address}&apikey={API_KEY}"
     
     try:
         # Mengirim permintaan HTTP GET menggunakan urllib
