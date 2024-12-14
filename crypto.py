@@ -12,19 +12,22 @@ def load_config():
 config = load_config()
 
 # Mengakses API Key dari config.json
-API_KEY = config['bscscan_api_key']
+API_KEY = config['etherscan_api_key']  # API Key Etherscan
 min_holders = config['check_criteria']['min_holders']
 min_holder_ratio = config['check_criteria']['min_holder_ratio']
 max_supply_percentage = config['check_criteria']['max_supply_percentage']
 
-# Fungsi untuk mendapatkan data dari BscScan API
+# Fungsi untuk mendapatkan data dari Etherscan API
 def check_token(address):
-    url = f"https://api.bscscan.com/api?module=token&action=getTokenInfo&contractaddress={address}&apikey={API_KEY}"
+    url = f"https://api.etherscan.io/api?module=token&action=getTokenInfo&contractaddress={address}&apikey={API_KEY}"
     
     try:
         # Mengirim permintaan HTTP GET menggunakan urllib
         with urllib.request.urlopen(url) as response:
             data = json.loads(response.read())
+        
+        # Cetak data untuk debugging
+        print("API Response:", data)
         
         if data["status"] == "1":
             return data["result"]
