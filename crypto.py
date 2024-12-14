@@ -12,7 +12,7 @@ def load_config():
             "developer_blacklist": [],
             "memecoin_blacklist": [],
             "pumpfun_url": "https://pump.fun/advanced",
-            "dexscreener_url": "https://api.dexscreener.com/latest/dex/tokens",
+            "dexscreener_url": "https://www.dexscreener.com/",
             "gmgn_url": "https://gmgn.ai",
             "rocker_universe_url": "https://api.rockeruniverse.com/check",
             "rugcheck_url": "http://rugcheck.xyz",
