@@ -43,7 +43,6 @@ def get_twitter_score(token_name):
     """Periksa skor Twitter token melalui Tweetscout API."""
     url = config["tweetscout_url"]
     try:
-        # Misalnya, token_name digunakan untuk mencari tweet terkait token di Twitter
         response = requests.get(f"{url}?token={token_name}")
         response.raise_for_status()
         result = response.json()
@@ -150,4 +149,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-        
+    
