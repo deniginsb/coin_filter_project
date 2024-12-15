@@ -1,61 +1,63 @@
 import requests
 import json
 
-# Fungsi untuk membaca konfigurasi dari file config.json
-def load_config():
-    with open("config.json", "r") as f:
-        config = json.load(f)
-    return config
-
 # Fungsi untuk mengambil data dari Dexscreener
-def get_dexscreener_data(config):
-    url = config["dexscreener_url"]
+def get_dexscreener_data():
+    url = "https://api.dexscreener.com/token-profiles/latest/v1"
     response = requests.get(url)
-    return response.json() if response.status_code == 200 else None
+    if response.status_code == 200:
+        return response.json()
+    else:
+        print(f"Error fetching data from Dexscreener, Status Code: {response.status_code}")
+        return None
 
-# Fungsi untuk mengambil data dari API de.fi
-def get_defi_data(config):
-    api_key = config["defi_api_key"]
-    url = config["defi_url"]
+# Fungsi untuk mengambil data dari API de.fi dengan tokenAddress
+def get_defi_data(token_address, api_key):
+    url = f"https://de.fi/api/{token_address}"  # Sesuaikan URL dengan API de.fi
     headers = {
-        "Authorization": f"Bearer {api_key}"  # Menambahkan API key dalam header otentikasi
+        "Authorization": f"Bearer {api_key}"
     }
     response = requests.get(url, headers=headers)
-    return response.json() if response.status_code == 200 else None
+    
+    # Cek status code
+    if response.status_code == 200:
+        try:
+            return response.json()
+        except requests.exceptions.JSONDecodeError:
+            print("Error: Response from de.fi is not in valid JSON format.")
+            return None
+    else:
+        print(f"Error fetching data from de.fi, Status Code: {response.status_code}")
+        return None
 
 # Fungsi utama untuk menjalankan alur
 def process_data():
-    # Membaca konfigurasi dari file config.json
-    config = load_config()
-
     # Langkah 1: Ambil data dari Dexscreener
-    dexscreener_data = get_dexscreener_data(config)
+    dexscreener_data = get_dexscreener_data()
     if not dexscreener_data:
         print("Error fetching data from Dexscreener.")
         return
 
-    # Langkah 2: Setelah Dexscreener data diterima, ambil data dari de.fi
-    defi_data = get_defi_data(config)
+    # Langkah 2: Ekstrak tokenAddress dari Dexscreener
+    token_address = dexscreener_data.get("tokenAddress")
+    if not token_address:
+        print("Token address not found in Dexscreener data.")
+        return
+    
+    # Langkah 3: Ambil API key dari file konfigurasi
+    with open("config.json", "r") as f:
+        config = json.load(f)
+    api_key = config["defi_api_key"]
+
+    # Langkah 4: Ambil data dari de.fi menggunakan tokenAddress
+    defi_data = get_defi_data(token_address, api_key)
     if not defi_data:
         print("Error fetching data from de.fi.")
         return
 
-    # Langkah 3: Gabungkan data dari Dexscreener dan de.fi
-    combined_data = dexscreener_data["data"] + defi_data["tokens"]
-
-    # Langkah 4: Filter dan analisis data untuk menemukan koin micin
-    micin_coins = []
-    for coin in combined_data:
-        if coin.get("price_usd", 0) < 1:  # Misalnya filter berdasarkan harga koin < 1 USD
-            micin_coins.append(coin)
-
-    # Tampilkan hasilnya
-    if micin_coins:
-        print("Koin Micin Ditemukan:")
-        for coin in micin_coins:
-            print(f"Name: {coin.get('name')}, Price: {coin.get('price_usd')}")
-    else:
-        print("Tidak ada koin micin ditemukan.")
+    # Langkah 5: Tampilkan data dari de.fi (atau proses sesuai kebutuhan)
+    print(f"Data from de.fi for token {token_address}:")
+    print(defi_data)
 
 # Jalankan proses
 process_data()
