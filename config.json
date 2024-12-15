@@ -1,8 +1,5 @@
 {
-  "etherscan_api_key": "1BKWWWJSXUF9PJVG49SH7VP3PEPNFY41N6",
-  "check_criteria": {
-    "min_holders": 100,
-    "min_holder_ratio": 0.01,
-    "max_supply_percentage": 0.95
-  }
+    "dexscreener_url": "https://api.dexscreener.com/token-profiles/latest/v1",
+    "defi_url": "https://de.fi/api",
+    "defi_api_key": "5179d4f5b988415e9552004e3852f0d0"
 }
