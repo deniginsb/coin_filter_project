@@ -11,19 +11,38 @@ def get_dexscreener_data():
         print(f"Error fetching data from Dexscreener, Status Code: {response.status_code}")
         return None
 
-# Fungsi untuk mengambil data dari API de.fi dengan tokenAddress
+# Fungsi untuk mengambil data dari API GraphQL de.fi dengan tokenAddress
 def get_defi_data(token_address, api_key):
-    # Sesuaikan URL dengan yang baru
-    url = f"https://de.fi/DEFItoken/{token_address}"  # Ganti URL sesuai permintaan
-    headers = {
-        "Authorization": f"Bearer {api_key}"
-    }
-    response = requests.get(url, headers=headers)
+    url = "https://public-api.de.fi/graphql"
     
-    # Cek status code
+    # Query GraphQL untuk mengambil data token
+    query = {
+        "query": """
+        query GetTokenData($tokenAddress: String!) {
+            token(address: $tokenAddress) {
+                symbol
+                name
+                price
+                marketCap
+                volume
+            }
+        }
+        """,
+        "variables": {
+            "tokenAddress": token_address
+        }
+    }
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+
+    response = requests.post(url, headers=headers, json=query)
+    
     if response.status_code == 200:
         try:
-            print("Respons Mentah:", response.text)  # Menampilkan respons mentah
+            # Cek dan tampilkan data jika berhasil
             return response.json()
         except requests.exceptions.JSONDecodeError:
             print("Error: Response from de.fi is not in valid JSON format.")
