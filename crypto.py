@@ -1,62 +1,61 @@
+import requests
 import json
-import urllib.request
-import urllib.error
 
-# Fungsi untuk memuat pengaturan dari file config.json
+# Fungsi untuk membaca konfigurasi dari file config.json
 def load_config():
-    with open('config.json') as config_file:
-        config = json.load(config_file)
+    with open("config.json", "r") as f:
+        config = json.load(f)
     return config
 
-# Memuat pengaturan
-config = load_config()
+# Fungsi untuk mengambil data dari Dexscreener
+def get_dexscreener_data(config):
+    url = config["dexscreener_url"]
+    response = requests.get(url)
+    return response.json() if response.status_code == 200 else None
 
-# Mengakses API Key dari config.json
-API_KEY = config['etherscan_api_key']  # API Key Etherscan
-min_holders = config['check_criteria']['min_holders']
-min_holder_ratio = config['check_criteria']['min_holder_ratio']
-max_supply_percentage = config['check_criteria']['max_supply_percentage']
+# Fungsi untuk mengambil data dari API de.fi
+def get_defi_data(config):
+    api_key = config["defi_api_key"]
+    url = config["defi_url"]
+    headers = {
+        "Authorization": f"Bearer {api_key}"  # Menambahkan API key dalam header otentikasi
+    }
+    response = requests.get(url, headers=headers)
+    return response.json() if response.status_code == 200 else None
 
-# Fungsi untuk mendapatkan data dari Etherscan API
-def check_token(address):
-    url = f"https://api.etherscan.io/api?module=token&action=tokeninfo&contractaddress={address}&apikey={API_KEY}"
-    
-    try:
-        # Mengirim permintaan HTTP GET menggunakan urllib
-        with urllib.request.urlopen(url) as response:
-            data = json.loads(response.read())
-        
-        # Cetak data untuk debugging
-        print("API Response:", data)
-        
-        if data["status"] == "1":
-            return data["result"]
-        else:
-            return None
-    except urllib.error.URLError as e:
-        print(f"Error fetching data: {e}")
-        return None
+# Fungsi utama untuk menjalankan alur
+def process_data():
+    # Membaca konfigurasi dari file config.json
+    config = load_config()
 
-# Fungsi untuk memeriksa potensi rugpull
-def analyze_rugpull(token_data):
-    if token_data:
-        holders = int(token_data["holdersCount"])
-        total_supply = int(token_data["totalSupply"])
-        circulating_supply = int(token_data["circulatingSupply"])
-        
-        if holders < min_holders or holders / total_supply < min_holder_ratio:
-            return "Token berisiko rugpull: jumlah holder terlalu sedikit"
-        if circulating_supply > total_supply * max_supply_percentage:
-            return "Token berisiko rugpull: persentase sirkulasi supply terlalu tinggi"
-        
-        return "Token aman, tetapi tetap waspada"
+    # Langkah 1: Ambil data dari Dexscreener
+    dexscreener_data = get_dexscreener_data(config)
+    if not dexscreener_data:
+        print("Error fetching data from Dexscreener.")
+        return
+
+    # Langkah 2: Setelah Dexscreener data diterima, ambil data dari de.fi
+    defi_data = get_defi_data(config)
+    if not defi_data:
+        print("Error fetching data from de.fi.")
+        return
+
+    # Langkah 3: Gabungkan data dari Dexscreener dan de.fi
+    combined_data = dexscreener_data["data"] + defi_data["tokens"]
+
+    # Langkah 4: Filter dan analisis data untuk menemukan koin micin
+    micin_coins = []
+    for coin in combined_data:
+        if coin.get("price_usd", 0) < 1:  # Misalnya filter berdasarkan harga koin < 1 USD
+            micin_coins.append(coin)
+
+    # Tampilkan hasilnya
+    if micin_coins:
+        print("Koin Micin Ditemukan:")
+        for coin in micin_coins:
+            print(f"Name: {coin.get('name')}, Price: {coin.get('price_usd')}")
     else:
-        return "Data token tidak ditemukan."
+        print("Tidak ada koin micin ditemukan.")
 
-# Input contract address
-address = input("Masukkan contract address token: ")
-
-# Mengecek dan menganalisis token
-token_data = check_token(address)
-result = analyze_rugpull(token_data)
-print(result)
+# Jalankan proses
+process_data()
