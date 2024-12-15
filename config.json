@@ -1,5 +1,5 @@
 {
+    "defi_api_key": "5179d4f5b988415e9552004e3852f0d0",
     "dexscreener_url": "https://api.dexscreener.com/token-profiles/latest/v1",
-    "defi_url": "https://de.fi/api",
-    "defi_api_key": "5179d4f5b988415e9552004e3852f0d0"
+    "defi_url": "https://public-api.de.fi/graphql"
 }
