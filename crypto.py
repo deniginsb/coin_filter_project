@@ -49,6 +49,7 @@ def get_defi_data(token_address, api_key):
             return None
     else:
         print(f"Error fetching data from de.fi, Status Code: {response.status_code}")
+        print(f"Response content: {response.text}")  # Menampilkan respons mentah untuk debug
         return None
 
 # Fungsi utama untuk menjalankan alur
