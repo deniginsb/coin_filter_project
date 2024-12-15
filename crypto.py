@@ -13,7 +13,8 @@ def get_dexscreener_data():
 
 # Fungsi untuk mengambil data dari API de.fi dengan tokenAddress
 def get_defi_data(token_address, api_key):
-    url = f"https://de.fi/api/{token_address}"  # Sesuaikan URL dengan API de.fi
+    # Sesuaikan URL dengan yang baru
+    url = f"https://de.fi/DEFItoken/{token_address}"  # Ganti URL sesuai permintaan
     headers = {
         "Authorization": f"Bearer {api_key}"
     }
@@ -22,6 +23,7 @@ def get_defi_data(token_address, api_key):
     # Cek status code
     if response.status_code == 200:
         try:
+            print("Respons Mentah:", response.text)  # Menampilkan respons mentah
             return response.json()
         except requests.exceptions.JSONDecodeError:
             print("Error: Response from de.fi is not in valid JSON format.")
